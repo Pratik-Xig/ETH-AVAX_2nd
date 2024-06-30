@@ -1,22 +1,25 @@
 # ETH_AVAX_proj2
 
-This project connects a React application to MetaMask, allowing users to vote for candidates and retrieve vote counts stored on the Ethereum blockchain using a smart contract.
+The ETH_AVAX_proj2 project connects a React application to MetaMask, enabling users to interact with a smart contract (Assessment.sol) on the Ethereum blockchain. Users can deposit Ether, withdraw Ether, and send Ether to other addresses using the smart contract.
 
 ## Description
 
-The `ETH_AVAX_proj2` project includes a smart contract and a React frontend that interact with each other. The smart contract allows users to vote for candidates and retrieve the vote count for a candidate, while the React application connects to MetaMask for user authentication and interaction with the smart contract.
+The `ETH-AVAX_2nd` project includes a smart contract and a React frontend that interact with each other. The smart contract allows users to vote for candidates and retrieve the vote count for a candidate, while the React application connects to MetaMask for user authentication and interaction with the smart contract.
 
 ## Contract Details
 
-The `ETH_AVAX_proj2` smart contract is written in Solidity and includes the following functionalities:
+The Assessment.sol smart contract includes:
 
 ### State Variables
 
-- `mapping(string => uint256) private votes`: Stores the vote count for each candidate.
+- `address payable public owner`: Stores the owner's address.
+uint256 public balance: Stores the current contract balance.
 
 ### Events
 
-- `event VoteCasted(string candidate, uint256 votes)`: Emitted when a new vote is cast.
+- `event Deposit(uint256 amount)`: Emitted when Ether is deposited into the contract.
+-`event Withdraw(uint256 amount)`: Emitted when Ether is withdrawn from the contract.
+-`event EtherSent(address recipient, uint256 amount)`: Emitted when Ether is sent to another address.
 
 ### Functions
 
@@ -39,30 +42,60 @@ function getVotes(string memory candidate) public view returns (uint256) {
 
 ## Frontend Details
 
+### sendEther
+
+```solidity
+
+function sendEther(address payable _recipient, uint256 _amount) public {
+    require(msg.sender == owner, "You are not the owner of this account");
+    require(balance >= _amount, "Insufficient balance to send");
+
+    uint _previousBalance = balance;
+
+    (bool success, ) = _recipient.call{value: _amount}("");
+
+    require(success, "Transfer failed");
+
+    balance -= _amount;
+
+    assert(balance == (_previousBalance - _amount));
+
+    emit EtherSent(_recipient, _amount);
+}
+Allows the owner to send Ether to another address (_recipient).
+```
 The frontend of the `ETH_AVAX_proj2` project is a React application that interacts with the smart contract using ethers.js.
 
 ### Main Components
 
-- **App.js**: Renders the `WalletCard` component.
-- **WalletCard.js**: Contains the logic for connecting to MetaMask and interacting with the smart contract.
+- **Deploy.js**: Renders the `index.js` component.
 
 ### Key Functions
 
-#### App.js
+#### Deploy.js
 
 ```javascript
-function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <WalletCard />
-      </header>
-    </div>
-  );
+const hre = require("hardhat");
+
+async function main() {
+  const initBalance = 1;
+  const Assessment = await hre.ethers.getContractFactory("Assessment");
+  const assessment = await Assessment.deploy(initBalance);
+  await assessment.deployed();
+
+  console.log(`A contract with balance of ${initBalance} eth deployed to ${assessment.address}`);
 }
+
+// We recommend this pattern to be able to use async/await everywhere
+// and properly handle errors.
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
+
 ```
 
-#### WalletCard.js
+#### index.js
 
 - **connWalletHandler**: Connects to MetaMask.
 
@@ -89,73 +122,88 @@ const accountChangedHandler = (newAccount) => {
 };
 ```
 
-- **updateEthers**: Sets up ethers.js provider, signer, and contract.
-
+- **storeTransaction**: Stores transactions
 ```javascript
-const updateEthers = () => {
-    let tempProvider = new ethers.providers.Web3Provider(window.ethereum);
-    setProvider(tempProvider);
-    let tempSigner = tempProvider.getSigner();
-    setSigner(tempSigner);
-    let tempContract = new ethers.Contract(ContractAdd, ContractABI, tempSigner);
-    setContract(tempContract);
-};
+ const storeTransaction = (type, amount) => {
+    const newTransaction = {
+      type,
+      amount: ethers.utils.formatEther(amount),
+      address: account,
+      timestamp: new Date().toLocaleString(),
+    };
+    setTransactions((prevTransactions) =>
+      prevTransactions.concat(newTransaction)
+    );
+  };
+
 ```
 
-- **voteHandler**: Casts a vote for a candidate.
+- **SendMoney**: To send ether to a specific address.
 
 ```javascript
-const voteHandler = (event) => {
-    event.preventDefault();
-    const candidate = event.target.candidateName.value;
-    contract.vote(candidate)
-        .then(() => {
-            getVotes(candidate);
-        })
-        .catch(error => {
-            console.log(error);
-        });
-};
+ const sendMoney = async () => {
+    if (recipient && amount) {
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+      const tx = await signer.sendTransaction({
+        to: recipient,
+        value: ethers.utils.parseEther(amount),
+      });
+      await tx.wait();
+      alert("Transaction successful");
+      storeTransaction("Sent", ethers.utils.parseEther(amount));
+      getBalance();
+    } else {
+      alert("Recipient address and amount are required.");
+    }
+  };
 ```
 
-- **getVotes**: Retrieves the vote count for a candidate.
-
-```javascript
-const getVotes = async (candidate) => {
-    let votes = await contract.getVotes(candidate);
-    setVoteCount(votes.toString());
-};
-```
 
 ### Usage
 
 ```javascript
-return (
-    <>
-        <h3>Voting System using Smart Contract</h3>
-        <button onClick={connWalletHandler}>{connButtonText}</button>
-        <h4>Address: {defaultAccount}</h4>
-        <form onSubmit={voteHandler}>
-            <input id='candidateName' type="text" placeholder="Candidate Name" />
-            <button type="submit">Vote</button>
-        </form>
-        <form onSubmit={(e) => { e.preventDefault(); getVotes(e.target.candidateName.value); }}>
-            <input id='candidateName' type="text" placeholder="Candidate Name" />
-            <button type="submit">Get Vote Count</button>
-        </form>
-        <div>
-            {voteCount !== null && <p>Vote Count: {voteCount}</p>}
-        </div>
-        {errorMessage}
-    </>
-);
+ return (
+      <div>
+        <p>Your Account: {account}</p>
+        <p>Your Balance: {balance} ETH</p>
+        <button onClick={deposit}>Deposit 1 ETH</button>
+        <button onClick={withdraw}>Withdraw 1 ETH</button>
+
+        <h2>Send Ether</h2>
+        <input
+          type="text"
+          placeholder="Recipient Address"
+          value={recipient}
+          onChange={(e) => setRecipient(e.target.value)}
+        />
+        <input
+          type="text"
+          placeholder="Amount in ETH"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+        />
+        <button onClick={sendMoney}>Send</button>
+
+        <h2>Transaction History</h2>
+        <ul>
+          {transactions.map((tx, index) => (
+            <li key={index}>
+              {tx.type} - {tx.amount} - {tx.timestamp}
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  };
+
 ```
 
 ## Deployment
 
 ### Smart Contract
 
-To deploy the `ETH_AVAX_proj2` smart contract:
+To deploy the `ETH-AVAX_2nd` smart contract:
 
 1. Open [Remix](https://remix.ethereum.org/).
 2. Create a new file and paste the smart contract code.
@@ -177,7 +225,7 @@ This project is licensed under the MIT License - see the LICENSE.md file for det
 
 ## Authors
 
-Sujal Mahajan
+Pratik Mishra
 
 ## Contributing
 
@@ -185,4 +233,4 @@ Contributions are welcome! Feel free to submit changes or improvements.
 
 ---
 
-This README provides a concise guide to understanding, deploying, and using the `ETH_AVAX_proj2` smart contract and React application.
+This README provides a concise guide to understanding, deploying, and using the `ETH-AVAX_2nd` smart contract and React application.
