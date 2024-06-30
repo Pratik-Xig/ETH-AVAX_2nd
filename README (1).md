@@ -1,6 +1,6 @@
-# ETH_AVAX_proj2
+# ETH-AVAX_2nd
 
-The ETH_AVAX_proj2 project connects a React application to MetaMask, enabling users to interact with a smart contract (Assessment.sol) on the Ethereum blockchain. Users can deposit Ether, withdraw Ether, and send Ether to other addresses using the smart contract.
+The ETH-AVAX_2nd project connects a React application to MetaMask, enabling users to interact with a smart contract (Assessment.sol) on the Ethereum blockchain. Users can deposit Ether, withdraw Ether, and send Ether to other addresses using the smart contract.
 
 ## Description
 
