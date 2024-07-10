@@ -23,24 +23,35 @@ uint256 public balance: Stores the current contract balance.
 
 ### Functions
 
-#### vote
+#### deposit
 
 ```solidity
-function vote(string memory candidate) public {
-    votes[candidate]++;
-    emit VoteCasted(candidate, votes[candidate]);
-}
+function deposit(uint256 _amount) public payable {
+        uint _previousBalance = balance;
+        require(msg.sender == owner, "You are not the owner of this account");
+        balance += _amount;
+        assert(balance == _previousBalance + _amount);
+        emit Deposit(_amount);
+    }
 ```
 
-#### getVotes
+#### withdraw
 
 ```solidity
-function getVotes(string memory candidate) public view returns (uint256) {
-    return votes[candidate];
-}
+ function withdraw(uint256 _withdrawAmount) public {
+        require(msg.sender == owner, "You are not the owner of this account");
+        uint _previousBalance = balance;
+        if (balance < _withdrawAmount) {
+            revert InsufficientBalance({
+                balance: balance,
+                withdrawAmount: _withdrawAmount
+            });
+        }
+        balance -= _withdrawAmount;
+        assert(balance == (_previousBalance - _withdrawAmount));
+        emit Withdraw(_withdrawAmount);
+    }
 ```
-
-## Frontend Details
 
 ### sendEther
 
@@ -62,8 +73,13 @@ function sendEther(address payable _recipient, uint256 _amount) public {
 
     emit EtherSent(_recipient, _amount);
 }
-Allows the owner to send Ether to another address (_recipient).
+
 ```
+Allows the owner to send Ether to another address (_recipient).
+
+## Frontend Details
+
+
 The frontend of the `ETH_AVAX_proj2` project is a React application that interacts with the smart contract using ethers.js.
 
 ### Main Components
